@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
-from flask import Flask, make_response, jsonify, session
+from flask import Flask, jsonify, session
 from flask_migrate import Migrate
+from sqlalchemy.orm import Session
 
 from models import db, Article, User
 
@@ -22,13 +23,23 @@ def clear_session():
 
 @app.route('/articles')
 def index_articles():
-
-    pass
+    articles = Article.query.all()
+    return jsonify([article.to_dict() for article in articles]), 200
 
 @app.route('/articles/<int:id>')
 def show_article(id):
+    
+    session['page_views'] = session.get('page_views', 0) + 1
+    
+    if session['page_views'] > 3:
+        return jsonify({'message': 'Maximum pageview limit reached'}), 401
 
-    pass
+    with db.session() as session_obj:
+        article = session_obj.get(Article, id)
+        if article:
+            return jsonify(article.to_dict()), 200
+        else:
+            return jsonify({'message': 'Article not found'}), 404
 
 if __name__ == '__main__':
     app.run(port=5555)
